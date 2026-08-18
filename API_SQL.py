@@ -11,10 +11,15 @@ def conectar_banco():
 def criar_tabela():
     conexao = conectar_banco()
 
-    conexao.execute(
+    conexao.execute("""
         CREATE TABLE IF NOT EXISTS livros(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             titulo TEXT NOT NULL,
             autor TEXT NOT NULL,
         )   
-    )
+    """)
+
+    conexao.commit()
+    conexao.close()
+
+    

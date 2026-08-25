@@ -96,6 +96,61 @@ def buscar_livro(id):
     
     return jsonify(dict(livro))
 
+@app.route("/livros/<int:id>", methods={"PUT"})
+def atualizar(id):
+
+    dados = request.get_json()
+
+    titulo = dados["titulo"]
+    autor = dados["autor"]
+
+    conexao = conectar_banco()
+
+    resultado = conexao.execute(
+        """
+        UPDATE livros
+        SET titulo = ?, autor = ?
+        WHERE id = ?
+        """,
+        (titulo, autor, id)
+    )
+
+    conexao.commit()
+
+    conexao.close()
+
+    if resultado.rowcount == 0:
+
+        return jsonify({
+            "Erro": "Livro nao encontrado."
+        }), 404
+    
+    return jsonify({
+            "Aviso": "Livro atualizado com sucesso!!!"
+        })
+
+@app.route("/livros/<int:id>", methods={"DELETE"})
+def exclusao(id):
+
+    conexao = conectar_banco()
+
+    resultado = conexao.execute(
+        "DELETE FROM livros WHERE id = ?",
+        (id,)
+    )
+
+    conexao.commit()
+    conexao.close()
+
+    if resultado.rowcount == 0:
+
+        return jsonify({
+            "Erro": "Livro nao encontrado."
+        }), 404
+    
+    return jsonify({
+            "Aviso": "Livro excluido com sucesso!!!"
+        })
 if __name__ == "__main__":
 
     criar_tabela()

@@ -46,7 +46,29 @@ def inicio():
 
 @app.route("/autores", methods=["POST"])
 def cadastrar_autor():
+
     dados = request.get_json()
+
+    if not dados:
+        return jsonify({
+            "Aviso": "JSON não digitado"
+        }), 400
+    
+    if "nome" not in  dados:
+        return jsonify({
+            "Aviso": "Nome é obrigatório"
+        }), 400
+    
+    if "nacionalidade" not in dados:
+        return jsonify({
+            "Aviso": "Nacionalidade é obrigatório"
+        }), 400
+    
+    if dados["nome"].strip() == "":
+        return jsonify({
+            "Aviso": "O nome está vazio"
+        }), 400
+    
     nome = dados["nome"]
     nacionalidade = dados["nacionalidade"]
     
@@ -242,6 +264,30 @@ def listar_livros():
         for livro in livros
     ])
 
+@app.route("/livros/buscarnome", methods=["GET"]) # listar livros
+def buscarnome():
+    
+    titulo = request.args.get("titulo")
+    conexao = conectar_banco()
+
+    livros = conexao.execute(
+        """
+        SELECT livros.id, livros.titulo, livros.ano, livros.autorid, autores.nome AS autor
+        FROM livros
+        JOIN autores
+        ON livros.autorid = autores.id
+        ORDER BY livros.id
+        WHERE livros.titulo LIKE ? 
+        """, (f"%{titulo}%",)
+    ).fetchall() # busca todos os itens do cadastro
+    
+    conexao.close()
+    
+    return jsonify([
+        dict(livro)
+        for livro in livros
+    ])
+
 
 @app.route("/livros/<int:id>", methods=["GET"]) # listar livro por id
 def buscarlivro(id):
@@ -268,8 +314,99 @@ def buscarlivro(id):
     
     return jsonify(dict(livro)) # função do dicionário é buscar os elementos da tabela como um todo
 
+@app.route("/livros/<int:id>", methods=["PUT"]) # listar livro por id
+def atualizar_livro(id):
+    
+    dados = request.get_json()
 
-# fazer tudo para a tabela livros também
+    titulo = dados["titulo"]
+    ano = dados["ano"]
+    autor_id = dados["autor_id"]
+
+    conexao = conectar_banco()
+
+    autor = conexao.execute("""
+        SELECT id
+        FROM autores
+                            
+        WHERE id = ?
+    """, (autor_id)).fetchone()
+
+    if autor is None:
+
+        conexao.close()
+
+        return jsonify({
+            "erro": "Autor não encontrado!"
+        }), 404
+    
+    resultado = conexao.execute("""
+        UPDATE livros
+        SET 
+            titulo = ?,
+            ano = ?,
+            autor_id = ?
+        WHERE id = ?
+    """, (
+        titulo, 
+        ano,
+        autor_id,
+        id
+    ))
+
+    conexao.commit()
+    conexao.close()
+
+    if resultado.rowcount == 0:
+
+        return jsonify({
+            "Aviso": "Livro não encontrado!"
+        }), 404
+    
+    return jsonify({
+        "Aviso": "Livro atualizado com sucesso!"
+    })
+
+@app.route("/livros/<int:id>", methods={"DELETE"})
+def excluir(id):
+
+    conexao = conectar_banco()
+
+    resultado = conexao.execute(
+        """DELETE FROM livros
+
+           WHERE id = ?
+    """, (id,))
+
+    conexao.commit()
+    conexao.close()
+
+    if resultado.rowcount == 0:
+
+        return jsonify({
+            "Erro": "Livro nao encontrado."
+        }), 404
+    
+    return jsonify({
+            "Aviso": "Livro excluido com sucesso!!!"
+        })
+
+@app.route("/livros/quantidade", methods=["GET"])
+def quantidade():
+
+    conexao = conectar_banco()
+
+    resultado = conexao.execute("""
+        SELECT COUNT(*) AS total
+        FROM livros
+    """).fetchone()
+
+    conexao.close()
+
+    return jsonify ({
+        "Total de Livros": resultado["total"]
+    })
+
 
 if __name__ == "__main__":
     criar_tabelas()
